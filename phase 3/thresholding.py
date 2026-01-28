@@ -12,7 +12,7 @@ import cv2
 def nothing(x):
     pass
 
-img = cv2.imread("rj.jpg")
+img = cv2.imread("shape.png")
 
 if img is None:
     print("Image not found")
