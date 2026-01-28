@@ -3,7 +3,7 @@ import cv2
 cap = cv2.VideoCapture(0)
 
 if not cap.isOpened():
-    print("❌ Webcam not accessible.")
+    print("Webcam not accessible.")
     exit()
 
 while True:
