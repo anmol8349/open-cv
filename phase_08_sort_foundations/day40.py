@@ -3,6 +3,77 @@ import cv2
 import math
 import cvzone
 # ============================================
+        # bulid matches
+        
+# ============================================
+
+def build_matches(persons, tracks):
+
+    matches = []
+
+    for detection_idx, (cx, cy, x1, y1, x2, y2) in enumerate(persons):
+
+        for tid, track in tracks.items():
+
+            predicted_x = track["x"] + track["vx"]
+            predicted_y = track["y"] + track["vy"]
+
+            dist = math.hypot(
+                cx - predicted_x,
+                cy - predicted_y
+            )
+
+            matches.append(
+                (
+                    dist,
+                    tid,
+                    detection_idx
+                )
+            )
+
+    matches.sort()
+
+    return matches
+
+
+
+
+# ============================================
+        # TRACK PEOPLE 
+# ============================================
+
+
+def update_track(cx, cy, vx, vy, confidence):
+
+    return {
+        "x": cx,
+        "y": cy,
+        "vx": vx,
+        "vy": vy,
+        "age": 0,
+        "confidence": confidence
+    }
+
+# ============================================
+        # TRACK PEOPLE 
+# ============================================
+
+def age_tracks(tracks, used_ids, new_tracks):
+
+    for tid, track in tracks.items():
+
+        if tid not in used_ids:
+
+            track["age"] += 1
+
+            track["confidence"] -= 0.1
+
+            if track["age"] <= 5 and track["confidence"] > 0:
+
+                new_tracks[tid] = track
+                
+                
+# ============================================
         # TRACK PEOPLE 
 # ============================================
 
@@ -13,9 +84,10 @@ def track_people(persons, tracks, next_id):
 
     tracked_persons = []
     
+    matches = build_matches(persons, tracks)
+    
     cost_matrix = []
     
-    matches = []
 
     # for cx, cy, x1, y1, x2, y2 in persons:
     for detection_idx, (cx, cy, x1, y1, x2, y2) in enumerate(persons):
@@ -41,14 +113,6 @@ def track_people(persons, tracks, next_id):
                 cy - predicted_y
             )
             
-            
-            matches.append(
-                            (
-                                dist,
-                                tid,
-                                detection_idx
-                            )
-                        )
                                     
             cost_row.append(dist)
             
@@ -61,23 +125,21 @@ def track_people(persons, tracks, next_id):
         
         
         if matched_id is None:
-            
+
             track_id = next_id
-            next_id+=1
+            next_id += 1
 
             vx = 0
-            vy = 0 
+            vy = 0
+
         else:
+
             track_id = matched_id
-            
+
             old_track = tracks[matched_id]
-            
-            predicted_x = old_track["x"] + old_track["vx"]
-            predicted_y = old_track["y"] + old_track["vy"]
-            
+
             vx = cx - old_track["x"]
             vy = cy - old_track["y"]
-        
 
         used_ids.add(track_id)
 
@@ -87,14 +149,13 @@ def track_people(persons, tracks, next_id):
         else:
             confidence = min(old_track["confidence"] + 0.1, 1.0 )
         
-        new_tracks[track_id] = {
-                              "x":cx,
-                              "y":cy,
-                              "vx":vx,
-                              "vy":vy,
-                              "age":0,
-                              "confidence":1.0
-                                 }
+        new_tracks[track_id] = update_track(
+                                        cx,
+                                        cy,
+                                        vx,
+                                        vy,
+                                        confidence
+                                    )
 
         tracked_persons.append(
             (
@@ -103,39 +164,20 @@ def track_people(persons, tracks, next_id):
                 x1, y1, x2, y2
             )
         )
-        
-    for tid, track in tracks.items():
+    age_tracks(
+        tracks,
+        used_ids,
+        new_tracks
+    )
 
-        if tid not in used_ids:
-
-            track["age"] += 1
-            
-            track["confidence"] -= 0.1
-            
-            
-            if track["age"] <= 5 and track["confidence"] > 0 :   
-
-                new_tracks[tid] = track
-                    
-    # print("\nTrack IDs:")
-    # print(list(tracks.keys()))
-    # print("\nCost matrix:")
-    
-    # for row in cost_matrix:
-    #     print(row)
-        
-    used_detections = set()
-    matches.sort()
-    
-    print("\nSorted Matches:")
-
-    for match in matches:
-        print(match)
         
     print("\nTop 10 Matches:")
 
     for match in matches[:10]:
         print(match)
+        
+        
+        
     return tracked_persons, new_tracks, next_id
 
 
