@@ -34,6 +34,39 @@ def build_matches(persons, tracks):
     matches.sort()
 
     return matches
+
+
+
+# ============================================
+        # assign TRACK PEOPLE 
+# ============================================
+
+def assign_tracks(matches):
+
+    assigned_tracks = {}
+
+    used_track_ids = set()
+    used_detection_ids = set()
+
+    for dist, tid, detection_idx in matches:
+
+        # Skip if already assigned
+        if tid in used_track_ids:
+            continue
+
+        if detection_idx in used_detection_ids:
+            continue
+
+        # Ignore bad matches
+        if dist > 100:
+            continue
+
+        assigned_tracks[detection_idx] = tid
+
+        used_track_ids.add(tid)
+        used_detection_ids.add(detection_idx)
+
+    return assigned_tracks
 # ============================================
         # update TRACK PEOPLE 
 # ============================================
@@ -51,7 +84,7 @@ def update_track(cx, cy, vx, vy, confidence):
     }
 
 # ============================================
-        # TRACK PEOPLE 
+        # age  TRACK PEOPLE 
 # ============================================
 
 def age_tracks(tracks, used_ids, new_tracks):
@@ -81,6 +114,8 @@ def track_people(persons, tracks, next_id):
     tracked_persons = []
     
     matches = build_matches(persons, tracks)
+    
+    assigned_tracks = assign_tracks(matches)
     
     cost_matrix = []
     
@@ -117,33 +152,31 @@ def track_people(persons, tracks, next_id):
                 min_dist = dist
                 matched_id = tid
                 
+        print(
+            f"Detection {detection_idx}: "
+            f"Greedy = {matched_id}, "
+            f"Global = {assigned_tracks.get(detection_idx)}"
+        )
+                
         cost_matrix.append(cost_row)
         
         
-        if matched_id is None:
-
-            track_id = next_id
-            next_id += 1
-
-            vx = 0
-            vy = 0
-
-        else:
-
-            track_id = matched_id
-
-            old_track = tracks[matched_id]
-
+        if detection_idx in assigned_tracks:
+            track_id = assigned_tracks[detection_idx]
+            old_track = tracks[track_id]
             vx = cx - old_track["x"]
             vy = cy - old_track["y"]
-
+        else:
+            track_id = next_id
+            next_id += 1
+            vx = 0
+            vy = 0
         used_ids.add(track_id)
 
-
-        if matched_id is None:
-            confidence = 1.0
+        if detection_idx in assigned_tracks:
+            confidence = min(old_track["confidence"] + 0.1, 1.0)
         else:
-            confidence = min(old_track["confidence"] + 0.1, 1.0 )
+            confidence = 1.0
         
         new_tracks[track_id] = update_track(
                                         cx,
